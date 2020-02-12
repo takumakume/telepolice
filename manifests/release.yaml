@@ -63,7 +63,7 @@ spec:
       serviceAccountName: telepolice
       containers:
       - name: telepolice
-        image: takumakume/telepolice:0.0.2
+        image: takumakume/telepolice:0.0.4
         imagePullPolicy: Always
         env:
           - name: TELEPOLICE_ARG
