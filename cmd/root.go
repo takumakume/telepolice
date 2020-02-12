@@ -60,7 +60,7 @@ func Execute() {
 func init() {
 	numCPU := runtime.NumCPU()
 	rootCmd.PersistentFlags().IntVarP(&concurrency, "concurrency", "c", numCPU, fmt.Sprintf("Multiple processing default: %d (runtime.NumCPU())", numCPU))
-	rootCmd.PersistentFlags().IntVar(&ignorerablePodStartTimeOfSec, "ignorerablePodStartTimeOfSec", 180, fmt.Sprintf("Pod immediately after startup is in preparation and passes health check for the specified number of seconds default: %d s", 180))
+	rootCmd.PersistentFlags().IntVar(&ignorerablePodStartTimeOfSec, "ignorerable-pod-start-time-of-sec", 180, fmt.Sprintf("Pod immediately after startup is in preparation and passes health check for the specified number of seconds default: %d s", 60))
 	rootCmd.PersistentFlags().BoolVar(&useInClusterConfig, "use-in-cluster-config", false, "Use the service account kubernetes gives to pods")
 	rootCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "n", "default", "Target namespaces (e.g. ns1,ns2)")
 	rootCmd.PersistentFlags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "Target all namespaces")
