@@ -123,3 +123,34 @@ default: `~/.kube/config`
 ```sh
 $ telepolice --use-in-cluster-config get
 ```
+
+## Install as a cleaner on kubernetes 
+
+- use master
+  ```sh
+  kubectl apply -f https://raw.githubusercontent.com/takumakume/telepolice/master/manifests/release.yaml
+  ```
+- use tag
+  ```sh
+  kubectl apply -f https://raw.githubusercontent.com/takumakume/telepolice/v0.0.1/manifests/release.yaml
+  ```
+
+#### Custom configration
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telepolice-config
+  namespace: telepolice
+data:
+  arg: "cleanup --use-in-cluster-config -A -i 30 --verbose"
+```
+
+edit `arg`
+
+### Install Cli tool
+
+```sh
+go get github.com/takumakume/telepolice
+```
