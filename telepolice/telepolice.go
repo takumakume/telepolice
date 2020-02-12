@@ -23,10 +23,11 @@ import (
 )
 
 type Telepolice struct {
-	kubernetes  *kube.Kubernetes
-	namespaces  []string
-	concurrency int
-	verbose     bool
+	kubernetes                   *kube.Kubernetes
+	namespaces                   []string
+	concurrency                  int
+	ignorerablePodStartTimeOfSec int
+	verbose                      bool
 }
 
 func NewByKubeConfig(c *Config) (*Telepolice, error) {
@@ -219,10 +220,11 @@ func (te *Telepolice) WatchWithCleanup(dryrun bool, intervalSec int) error {
 
 func new(c *Config, kubernetes *kube.Kubernetes) (*Telepolice, error) {
 	return &Telepolice{
-		kubernetes:  kubernetes,
-		concurrency: c.Concurrency,
-		namespaces:  []string{"default"},
-		verbose:     false,
+		kubernetes:                   kubernetes,
+		concurrency:                  c.Concurrency,
+		ignorerablePodStartTimeOfSec: c.IgnorerablePodStartTimeOfSec,
+		namespaces:                   []string{"default"},
+		verbose:                      false,
 	}, nil
 }
 
@@ -245,8 +247,23 @@ func (te *Telepolice) getPods() ([]corev1.Pod, error) {
 	return pods, nil
 }
 
+func (te *Telepolice) checkPassageOfPodStartTime(now time.Time, podStartTime *metav1.Time) bool {
+	thresholdTime := podStartTime.Add(time.Duration(te.ignorerablePodStartTimeOfSec) * time.Second)
+	if now.Unix() > thresholdTime.Unix() {
+		return true
+	}
+
+	return false
+}
+
 func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 	te.debug(fmt.Sprintf("telepolice.getPodStatus() %s", pod.Name))
+
+	if !te.checkPassageOfPodStartTime(time.Now(), pod.Status.StartTime) {
+		te.debug(fmt.Sprintf("The Pod will skip the check because it is not passage since the start %d seconds: %s", te.ignorerablePodStartTimeOfSec, pod.Name))
+		return true, nil
+	}
+
 	containerName := ""
 	for _, c := range pod.Spec.Containers {
 		if strings.Contains(c.Image, "telepresence-k8s") {
@@ -286,12 +303,11 @@ func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
-
-	if !strings.Contains(stdout.String(), "sshd: telepresence") && strings.Contains(stdout.String(), "[ash]") {
-		return false, nil
+	if strings.Contains(stdout.String(), "sshd: telepresence") {
+		return true, nil
 	}
 
-	return true, nil
+	return false, nil
 }
 
 func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {

@@ -32,12 +32,13 @@ import (
 )
 
 var (
-	useInClusterConfig bool
-	concurrency        int
-	telepoliceObj      *telepolice.Telepolice
-	namespaces         string
-	allNamespaces      bool
-	verbose            bool
+	useInClusterConfig           bool
+	concurrency                  int
+	ignorerablePodStartTimeOfSec int
+	telepoliceObj                *telepolice.Telepolice
+	namespaces                   string
+	allNamespaces                bool
+	verbose                      bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -59,6 +60,7 @@ func Execute() {
 func init() {
 	numCPU := runtime.NumCPU()
 	rootCmd.PersistentFlags().IntVarP(&concurrency, "concurrency", "c", numCPU, fmt.Sprintf("Multiple processing default: %d (runtime.NumCPU())", numCPU))
+	rootCmd.PersistentFlags().IntVar(&ignorerablePodStartTimeOfSec, "ignorerablePodStartTimeOfSec", 30, fmt.Sprintf("Pod immediately after startup is in preparation and passes health check for the specified number of seconds default: %d (runtime.NumCPU())", 30))
 	rootCmd.PersistentFlags().BoolVar(&useInClusterConfig, "use-in-cluster-config", false, "Use the service account kubernetes gives to pods")
 	rootCmd.PersistentFlags().StringVarP(&namespaces, "namespaces", "n", "default", "Target namespaces (e.g. ns1,ns2)")
 	rootCmd.PersistentFlags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "Target all namespaces")
@@ -70,7 +72,7 @@ func strToSlice(s string) []string {
 }
 
 func initCommand() {
-	c := telepolice.NewConfig(concurrency)
+	c := telepolice.NewConfig(concurrency, ignorerablePodStartTimeOfSec)
 	var err error
 	if useInClusterConfig {
 		telepoliceObj, err = telepolice.NewByInClusterConfig(c)
