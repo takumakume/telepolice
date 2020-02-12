@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: telepolice
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: telepolice
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/exec", "namespaces"]
+  verbs: ["get", "list", "update", "delete", "patch", "watch"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "deployments/scale", "replicasets", "replicasets/scale"]
+  verbs: ["get", "list", "update", "delete", "patch", "watch"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: telepolice
+  namespace: telepolice
+
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: telepolice
+subjects:
+- kind: ServiceAccount
+  name: telepolice
+  namespace: telepolice
+roleRef:
+  kind: ClusterRole
+  name: telepolice
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telepolice-config
+  namespace: telepolice
+data:
+  arg: "cleanup --use-in-cluster-config -A -i 30"
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: telepolice
+  namespace: telepolice
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: telepolice
+    spec:
+      serviceAccountName: telepolice
+      containers:
+      - name: telepolice
+        image: takumakume/telepolice:0.0.1
+        imagePullPolicy: Always
+        env:
+          - name: TELEPOLICE_ARG
+            valueFrom:
+              configMapKeyRef:
+                name: telepolice-config
+                key: arg
+        command: ["/bin/sh"]
+        args: ["-c", "/telepolice $(TELEPOLICE_ARG)"]

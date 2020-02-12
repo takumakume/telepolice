@@ -8,7 +8,7 @@ import (
 
 type Kubernetes struct {
 	RestConfig *rest.Config
-	Clientset  *kubernetes.Clientset
+	Clientset  kubernetes.Interface
 }
 
 func NewByInClusterConfig() (*Kubernetes, error) {
@@ -29,8 +29,11 @@ func NewByKubeConfig(configPath string) (*Kubernetes, error) {
 	return new(config)
 }
 
+func newClient(config *rest.Config) (kubernetes.Interface, error) {
+	return kubernetes.NewForConfig(config)
+}
 func new(config *rest.Config) (*Kubernetes, error) {
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := newClient(config)
 	if err != nil {
 		return nil, err
 	}
