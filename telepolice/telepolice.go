@@ -286,11 +286,12 @@ func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 	if err != nil {
 		return false, nil
 	}
-	if strings.Contains(stdout.String(), "sshd: telepresence") {
-		return true, nil
+
+	if !strings.Contains(stdout.String(), "sshd: telepresence") && strings.Contains(stdout.String(), "[ash]") {
+		return false, nil
 	}
 
-	return false, nil
+	return true, nil
 }
 
 func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {
