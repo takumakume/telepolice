@@ -18,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 
+	"github.com/avast/retry-go"
 	"github.com/mitchellh/go-homedir"
 	"github.com/olekukonko/tablewriter"
 )
@@ -133,15 +134,32 @@ func (te *Telepolice) get() ([]resouce, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
-			status, err := te.getPodStatus(pod)
+			status := false
+			err := retry.Do(
+				func() error {
+					var err error
+					status, err = te.getPodStatus(pod)
+					if err != nil {
+						te.debug(fmt.Sprintf("telepolice.getPodStatus() got error, pod: %s %s", pod.Name, err.Error()))
+						return err
+					}
+					if !status {
+						te.debug(fmt.Sprintf("telepolice.getPodStatus() was false, pod: %s", pod.Name))
+						return fmt.Errorf("telepolice.getPodStatus() was false, pod: %s", pod.Name)
+					}
+					return nil
+				},
+				retry.DelayType(func(n uint, config *retry.Config) time.Duration {
+					return time.Duration(n) * time.Second
+				}),
+				retry.Attempts(3),
+			)
 			if err == nil {
 				r := resouce{
 					pod:    pod,
 					status: status,
 				}
 				rr = append(rr, r)
-			} else {
-				te.error(err.Error())
 			}
 		}(pod)
 	}
