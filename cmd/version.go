@@ -32,7 +32,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Show version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("telepolice v0.0.6")
+		fmt.Println("telepolice v0.0.7")
 	},
 }
 
