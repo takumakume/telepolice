@@ -134,13 +134,13 @@ func (te *Telepolice) get() ([]resouce, error) {
 			defer wg.Done()
 			defer func() { <-sem }()
 
+			// TODO: refactor
 			status := false
-			err := retry.Do(
+			_ = retry.Do(
 				func() error {
-					var err error
 					status, err = te.getPodStatus(pod)
 					if err != nil {
-						te.debug(fmt.Sprintf("telepolice.getPodStatus() got error, pod: %s %s", pod.Name, err.Error()))
+						te.error(fmt.Sprintf("telepolice.getPodStatus() got error, pod: %s %s", pod.Name, err.Error()))
 						return err
 					}
 					if !status {
@@ -154,13 +154,11 @@ func (te *Telepolice) get() ([]resouce, error) {
 				}),
 				retry.Attempts(3),
 			)
-			if err == nil {
-				r := resouce{
-					pod:    pod,
-					status: status,
-				}
-				rr = append(rr, r)
+			r := resouce{
+				pod:    pod,
+				status: status,
 			}
+			rr = append(rr, r)
 		}(pod)
 	}
 
@@ -301,7 +299,7 @@ func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 		SubResource("exec").
 		Param("container", containerName)
 	req.VersionedParams(&corev1.PodExecOptions{
-		Command: []string{"ps", "-o", "args"},
+		Command: []string{"sh", "-c", "echo -en 'HEAD / HTTP/1.1\n\n' | nc localhost 9055; exit 0"},
 		Stdin:   false,
 		Stdout:  true,
 		Stderr:  false,
@@ -319,9 +317,14 @@ func (te *Telepolice) getPodStatus(pod corev1.Pod) (bool, error) {
 		Stderr: &stderr,
 	})
 	if err != nil {
-		return false, nil
+		return false, err
 	}
-	if strings.Contains(stdout.String(), "sshd: telepresence") {
+
+	if stdout.String() != "" {
+		te.debug(stdout.String())
+	}
+
+	if strings.Contains(stdout.String(), "HTTP/1.0 200 OK") {
 		return true, nil
 	}
 
