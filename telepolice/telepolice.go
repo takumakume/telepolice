@@ -18,6 +18,10 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
 
+	// Using vendor auth package
+	// ref: https://github.com/kubernetes/client-go/issues/242
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
 	"github.com/avast/retry-go"
 	"github.com/mitchellh/go-homedir"
 	"github.com/olekukonko/tablewriter"
