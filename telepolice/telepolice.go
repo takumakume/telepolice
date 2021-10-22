@@ -372,25 +372,31 @@ func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {
 		return err
 	}
 
+	skipRecoveryDeployment := false
 	lac := KubernetesLastAppliedConfiguration{}
 	json.Unmarshal(([]byte)(deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"]), &lac)
 	if lac.Metadata.SelfLink == "" {
-		return fmt.Errorf("Can't find original Deployment name in annotations: %s", pod.Name)
+		skipRecoveryDeployment = true
+		te.info("Can't find .Metadata.SelfLink from last-applied-configuration. Skiped recovery deployment replicas.")
 	}
 
-	originalDeployment, err := deploymentClientset.Get(filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
-	if err != nil {
-		return err
-	}
-
-	if !dryrun {
-		newOriginalDeployment := originalDeployment
-		newOriginalDeployment.Spec.Replicas = &lac.Spec.Replicas
-		_, err = deploymentClientset.Update(newOriginalDeployment)
+	if !skipRecoveryDeployment {
+		originalDeployment, err := deploymentClientset.Get(filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 
+		if !dryrun {
+			newOriginalDeployment := originalDeployment
+			newOriginalDeployment.Spec.Replicas = &lac.Spec.Replicas
+			_, err = deploymentClientset.Update(newOriginalDeployment)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !dryrun {
 		if err := deploymentClientset.Delete(deployment.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}
