@@ -2,10 +2,8 @@ package telepolice
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -373,30 +371,29 @@ func (te *Telepolice) cleanupOne(pod corev1.Pod, dryrun bool) error {
 	}
 
 	skipRecoveryDeployment := false
-	lac := KubernetesLastAppliedConfiguration{}
-	json.Unmarshal(([]byte)(deployment.Annotations["kubectl.kubernetes.io/last-applied-configuration"]), &lac)
-	if lac.Metadata.SelfLink == "" {
-		skipRecoveryDeployment = true
-		te.info("Can't find .Metadata.SelfLink from last-applied-configuration. Skiped recovery deployment replicas.")
-	}
-
-	if !skipRecoveryDeployment {
-		originalDeployment, err := deploymentClientset.Get(filepath.Base(lac.Metadata.SelfLink), metav1.GetOptions{})
+	originalDeployment := deployment.Annotations["telepolice/original-deployment"]
+	originalDeploymentReplicas := 1
+	if deployment.Annotations["telepolice/original-deployment-replicas"] != "" {
+		originalDeploymentReplicas, err = strconv.Atoi(deployment.Annotations["telepolice/original-deployment-replicas"])
 		if err != nil {
 			return err
 		}
+	}
 
-		if !dryrun {
-			newOriginalDeployment := originalDeployment
-			newOriginalDeployment.Spec.Replicas = &lac.Spec.Replicas
-			_, err = deploymentClientset.Update(newOriginalDeployment)
+	d, err := deploymentClientset.Get(originalDeployment, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
+	i := int32(originalDeploymentReplicas)
+	d.Spec.Replicas = &i
+
+	if !dryrun {
+		if !skipRecoveryDeployment {
+			_, err = deploymentClientset.Update(d)
 			if err != nil {
 				return err
 			}
 		}
-	}
-
-	if !dryrun {
 		if err := deploymentClientset.Delete(deployment.Name, &metav1.DeleteOptions{}); err != nil {
 			return err
 		}

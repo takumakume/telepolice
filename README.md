@@ -58,6 +58,22 @@ telepolice sees the state of sshd process.
 
 </details>
 
+## Add annotations to deployment
+
+```yaml
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: app-deployment
+spec:
+  annotations:
+    telepolice/original-deployment: app-deployment
+    telepolice/original-deployment-replicas: 1
+...
+```
+
+Previously, metadata.selflink of last-applied-configuration of annotations was used, but it became deprecated.
+
 ## Usage
 
 ### Get telepresence resources
